@@ -1,26 +1,12 @@
-'use strict';
-const form = document.querySelector('#request-form');
-const result = document.querySelector('#result');
-function localDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-form.elements.date.min = localDate(new Date());
-document.querySelector('#example').addEventListener('click', () => {
-  const date = new Date(); date.setDate(date.getDate()+3);
-  const example = {owner:'Alex',dog:'Teddy',breed:'Cockapoo',date:localDate(date),notes:'A little nervous around the dryer.'};
-  for (const [key,value] of Object.entries(example)) form.elements[key].value=value;
-  result.hidden=true;
-  form.elements.owner.focus({preventScroll:true});
-});
-form.addEventListener('submit', event => {
-  event.preventDefault();
-  if (!form.reportValidity()) return;
-  const values = new FormData(form);
-  document.querySelector('#result-title').textContent = `${values.get('dog')}’s request`;
-  const summary = document.querySelector('#summary'); summary.replaceChildren();
-  for (const [label,key] of [['Your name','owner'],['Dog','dog'],['Breed / coat','breed'],['Preferred date','date'],['Notes','notes']]) {
-    if (!values.get(key)) continue;
-    const dt=document.createElement('dt'), dd=document.createElement('dd');
-    dt.textContent=label; dd.textContent=values.get(key); summary.append(dt,dd);
-  }
-  result.hidden=false; result.focus();
-});
-form.addEventListener('input', () => { result.hidden=true; });
+const cfg=["ruff-to-fluff-github", "Good hair days, for good dogs.", "Request a grooming appointment", "Grooming enquiry", ["Grooming consultation", "Full groom enquiry", "Bath and tidy enquiry", "Not sure \u2014 please advise"], "Coat, temperament and care notes", "Cockapoo; a little nervous around the dryer.", "Dog\u2019s name and breed", "Teddy, Cockapoo", "Meet your dog|A name, a breed, a personality.", "Personal care|Share coat and comfort needs.", "A fresh start|Request a day with Melanie.", "#f2f2e9", "#354b42"];
+const dialog=document.querySelector('dialog'), form=document.querySelector('form'), pages=[...document.querySelectorAll('[data-step]')];let step=0,opener,map,marker;
+const localDate=new Date();localDate.setDate(localDate.getDate()+7);const sampleDate=`${localDate.getFullYear()}-${String(localDate.getMonth()+1).padStart(2,'0')}-${String(localDate.getDate()).padStart(2,'0')}`;
+const today=new Date();form.elements.date.min=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+function show(n){step=n;pages.forEach((p,i)=>{p.hidden=i!==n;p.disabled=i!==n});document.querySelectorAll('.steps li').forEach((p,i)=>{if(i===n)p.setAttribute('aria-current','step');else p.removeAttribute('aria-current')});document.querySelector('#back').hidden=n===0;document.querySelector('#next').textContent=n===0?'Continue to contact details':n===1?'Review demo request':'Close preview';if(n===2)review();pages[n].querySelector('legend').focus({preventScroll:true});dialog.scrollTop=0;if(n===0&&map)setTimeout(()=>map.invalidateSize(),50)}
+document.querySelectorAll('[data-book]').forEach(b=>b.addEventListener('click',()=>{opener=b;dialog.showModal();show(0);initMap()}));
+function close(){dialog.close();opener?.focus()}document.querySelector('#close').onclick=close;document.querySelector('#back').onclick=()=>show(step-1);
+form.addEventListener('submit',e=>{e.preventDefault();if(step===2){close();return}if([...pages[step].querySelectorAll('input,select,textarea')].every(el=>el.reportValidity()))show(step+1)});
+document.querySelector('#example').onclick=()=>{form.elements.service.selectedIndex=1;form.elements.detail.value=cfg[8];form.elements.notes.value=cfg[6];form.elements.date.value=sampleDate;form.elements.name.value='Alex Example';form.elements.email.value='alex@example.com';form.elements.phone.value='';if(cfg[0]==='blossom-and-twigs-concept'){form.elements.address.value='Example delivery address, Cowes';if(map)setPin({lat:50.76,lng:-1.30})}};
+function review(){const dl=document.querySelector('#summary');dl.replaceChildren();form.querySelectorAll('[data-label]').forEach(el=>{if(!el.value.trim())return;let dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=el.dataset.label;dd.textContent=el.value;dl.append(dt,dd)})}
+function setPin(ll){if(marker)marker.setLatLng(ll);else{marker=L.marker(ll,{draggable:true}).addTo(map);marker.on('dragend',()=>setPin(marker.getLatLng()))}form.elements.pin.value=`${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;document.querySelector('#pin-status').textContent='Selected map pin: '+form.elements.pin.value}
+function initMap(){if(cfg[0]!=='blossom-and-twigs-concept'||map)return;if(!window.L){document.querySelector('#pin-status').textContent='Map unavailable. You can still enter a delivery address below.';return}map=L.map('delivery-map',{scrollWheelZoom:false}).setView([50.70,-1.30],11);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);map.on('click',e=>setPin(e.latlng));document.querySelector('#centre-pin').onclick=()=>setPin(map.getCenter());document.querySelector('#clear-pin').onclick=()=>{if(marker)map.removeLayer(marker);marker=null;form.elements.pin.value='';document.querySelector('#pin-status').textContent='No map pin selected.'};setTimeout(()=>map.invalidateSize(),50)}
